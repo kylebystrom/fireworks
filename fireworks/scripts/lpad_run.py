@@ -28,7 +28,6 @@ from fireworks.features.fw_report import FWReport
 from fireworks.features.introspect import Introspector
 from fireworks import LaunchPad, WFLock
 from fireworks.core.firework import Workflow, Firework
-from fireworks.core.fworker import FWorker
 from fireworks import __version__ as FW_VERSION
 from fireworks import FW_INSTALL_DIR
 from fireworks.user_objects.firetasks.script_task import ScriptTask
@@ -569,7 +568,7 @@ def add_scripts(args):
 # necessary with the new fireworks
 def recover_offline(args):
     lp = get_lp(args)
-    fworker_name = FWorker.from_file(args.fworker_file).name if args.fworker_file else None
+    fworker_name = loadfn(args.fworker_file).get('name') if args.fworker_file else None
     failed_fws = []
     recovered_fws = []
 

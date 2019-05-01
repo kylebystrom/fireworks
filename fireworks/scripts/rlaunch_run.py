@@ -13,7 +13,6 @@ import sys
 
 from fireworks.fw_config import LAUNCHPAD_LOC, FWORKER_LOC, CONFIG_FILE_DIR
 from fireworks import LaunchPad
-from fireworks.core.fworker import FWorker
 from fireworks.scripts.rocket_launcher import rapidfire, launch_rocket
 from fireworks.utilities.fw_utilities import get_my_host, get_my_ip, get_fw_logger
 from fireworks.features.multi_launcher import launch_multiprocess
@@ -119,16 +118,16 @@ def rlaunch():
 
     args.loglvl = 'CRITICAL' if args.silencer else args.loglvl
 
+    if args.fworker_file:
+        fworker = loadfn(args.fworker_file)
+    else:
+        fworker = None
+
     if args.command == 'singleshot' and args.offline:
         launchpad = None
     else:
         launchpad = LaunchPad.from_file(args.launchpad_file) if args.launchpad_file else LaunchPad(
-            strm_lvl=args.loglvl)
-
-    if args.fworker_file:
-        fworker = FWorker.from_file(args.fworker_file)
-    else:
-        fworker = FWorker()
+            fworker=fworker, strm_lvl=args.loglvl)
 
     # prime addr lookups
     _log = get_fw_logger("rlaunch", stream_level="INFO")
@@ -137,7 +136,7 @@ def rlaunch():
     get_my_ip()
 
     if args.command == 'rapidfire':
-        rapidfire(launchpad, fworker=fworker, m_dir=None, nlaunches=args.nlaunches,
+        rapidfire(launchpad, m_dir=None, nlaunches=args.nlaunches,
                   max_loops=args.max_loops, sleep_time=args.sleep, strm_lvl=args.loglvl,
                   timeout=args.timeout,local_redirect=args.local_redirect)
     elif args.command == 'multi':
@@ -147,12 +146,12 @@ def rlaunch():
                 args.nodefile = os.environ[args.nodefile]
             with open(args.nodefile, 'r') as f:
                 total_node_list = [line.strip() for line in f.readlines()]
-        launch_multiprocess(launchpad, fworker, args.loglvl, args.nlaunches, args.num_jobs,
+        launch_multiprocess(launchpad, args.loglvl, args.nlaunches, args.num_jobs,
                             args.sleep, total_node_list, args.ppn, timeout=args.timeout,
                             exclude_current_node=args.exclude_current_node,
                             local_redirect=args.local_redirect)
     else:
-        launch_rocket(launchpad, fworker, args.fw_id, args.loglvl, pdb_on_exception=args.pdb)
+        launch_rocket(launchpad, args.fw_id, args.loglvl, pdb_on_exception=args.pdb)
 
 if __name__ == '__main__':
     rlaunch()
