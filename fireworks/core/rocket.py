@@ -237,7 +237,7 @@ class Rocket:
                 m_fw.to_file('FW.yaml')
 
             my_spec = dict(m_fw.spec)  # make a copy of spec, don't override original
-            my_spec["_fw_env"] = self.launchpad.fworker.get('env')
+            my_spec["_fw_env"] = lp.fworker.get('env') if lp else None
 
             # set up heartbeat (pinging the server that we're still alive)
             ping_stop = start_ping_firework(lp, fw_id)
@@ -467,7 +467,7 @@ class Rocket:
             fwaction.mod_spec.append({"_push_all": {"_job_info": job_info}})
 
         if my_spec.get("_preserve_fworker"):
-            fwaction.update_spec['_fworker'] = self.launchpad.fworker.get('name')
+            fwaction.update_spec['_fworker'] = self.launchpad.fworker.get('name') if self.launchpad else None
 
         if my_spec.get("_files_out"):
             # One potential area of conflict is if a fw depends on two fws
