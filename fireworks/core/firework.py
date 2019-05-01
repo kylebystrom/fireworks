@@ -24,7 +24,6 @@ from monty.os.path import zpath
 from six import add_metaclass
 
 from fireworks.fw_config import TRACKER_LINES, NEGATIVE_FWID_CTR, EXCEPT_DETAILS_ON_RERUN
-from fireworks.core.fworker import FWorker
 from fireworks.utilities.dict_mods import apply_mod
 from fireworks.utilities.fw_serializers import FWSerializable, recursive_serialize, \
     recursive_deserialize, serialize_fw
@@ -87,10 +86,10 @@ class Firetask(defaultdict, FWSerializable):
         Args:
             fw_spec (dict): A Firework spec. This comes from the master spec.
                 In addition, this spec contains a special "_fw_env" key that
-                contains the env settings of the FWorker calling this method.
+                contains the env settings of the LaunchPad calling this method.
                 This provides for abstracting out certain commands or
                 settings. For example, "foo" may be named "foo1" in resource
-                1 and "foo2" in resource 2. The FWorker env can specify {
+                1 and "foo2" in resource 2. The LaunchPad env can specify {
                 "foo": "foo1"}, which maps an abstract variable "foo" to the
                 relevant "foo1" or "foo2". You can then write a task that
                 uses fw_spec["_fw_env"]["foo"] that will work across all
@@ -183,7 +182,7 @@ class Firework(FWSerializable):
     def __init__(self, tasks: Union[Firetask, List[Firetask]],
                  launch_dir: Optional[str]=None, spec: Optional[dict]=None,
                  name: Optional[str]=None, state: str='WAITING',
-                 fworker: Optional[FWorker]=None,
+                 fworker: Optional[Dict]=None,
                  host: Optional[str]=None, ip: Optional[str]=None,
                  trackers: Optional[List['Tracker']]=None,
                  fw_id: Optional[int]=None,
@@ -231,7 +230,9 @@ class Firework(FWSerializable):
 
     @recursive_deserialize
     def _setup_launch(self, launch_info):
-        self.fworker = launch_info.get('fworker', None) or FWorker()
+        self.fworker = launch_info.get('fworker', None) or {'name': 'my first fireworker',
+                                                            'category': '',
+                                                            'query': {}}
         self.host = launch_info.get('host', None) or get_my_host()
         self.ip = launch_info.get('ip', None) or get_my_ip()
         self.trackers = launch_info.get('trackers', None) or []
@@ -248,7 +249,7 @@ class Firework(FWSerializable):
 
     def reset_launch(self, state: str='WAITING', launch_dir: str=None,
                      trackers: List['Tracker']=None,
-                     state_history: dict=None, fworker: FWorker=None,
+                     state_history: dict=None, fworker: Dict=None,
                      host: str=None, ip: str=None, launch_idx: int=None):
 
         launch_info = {'fworker': fworker,
@@ -468,7 +469,8 @@ class Firework(FWSerializable):
         created_on = m_dict.get('created_on')
         updated_on = m_dict.get('updated_on')
         launch_idx = launch.get('launch_idx', None)
-        fworker = FWorker.from_dict(launch['fworker']) if launch.get('fworker', None) else None
+        print("CHECK", launch.get('fworker', None))
+        fworker = launch['fworker'] if launch.get('fworker', None) else None
         action = FWAction.from_dict(launch['action']) if launch.get('action', None) else None
         trackers = [Tracker.from_dict(f) for f in launch['trackers']]\
                     if launch.get('trackers', None) else None

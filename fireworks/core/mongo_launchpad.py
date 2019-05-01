@@ -32,9 +32,9 @@ from fireworks.core.firework import Firework, Workflow, Firetask
 from fireworks.core.launchpad import LaunchPad, LockedWorkflowError, WFLock
 from fireworks.fw_config import LAUNCHPAD_LOC, SORT_FWS, RESERVATION_EXPIRATION_SECS, \
     RUN_EXPIRATION_SECS, MAINTAIN_INTERVAL, WFLOCK_EXPIRATION_SECS, WFLOCK_EXPIRATION_KILL, \
-    MONGO_SOCKET_TIMEOUT_MS, GRIDFS_FALLBACK_COLLECTION
+    MONGO_SOCKET_TIMEOUT_MS, GRIDFS_FALLBACK_COLLECTION, FWORKER_LOC
 from fireworks.utilities.fw_serializers import FWSerializable, reconstitute_dates
-from fireworks.core.firework import Firework, Workflow, FWAction, Tracker, FWorker
+from fireworks.core.firework import Firework, Workflow, FWAction, Tracker
 from fireworks.utilities.fw_utilities import get_fw_logger
 from fireworks.utilities.fw_serializers import recursive_dict, _recursive_load
 
@@ -143,11 +143,38 @@ class MongoLaunchPad(LaunchPad):
         self.backup_launch_data = {}
         self.backup_fw_data = {}
 
-        if type(fworker) == str:
+        if fworker is None and FWORKER_LOC:
+            fworker = loadfn(FWORKER_LOC)
+        elif type(fworker) == str:
             fworker = loadfn(fworker)
         self.fworker = fworker or {'name': 'my first fireworker',
                                    'category': '',
                                    'query': {}}
+
+    @property
+    def worker_query(self) -> Dict:
+        """
+        Returns updated query dict.
+        """
+        q = dict(self.fworker.get('query'))
+        fworker_check = [{"spec._fworker": {"$exists": False}},
+                         {"spec._fworker": None},
+                         {"spec._fworker": self.fworker.get('name')}]
+        category = self.fworker.get('category')
+        if '$or' in q:
+            q['$and'] = q.get('$and', [])
+            q['$and'].extend([{'$or': q.pop('$or')}, {'$or': fworker_check}])
+        else:
+            q['$or'] = fworker_check
+        if category and isinstance(self.fworker.get('category'), six.string_types):
+            if category == "__none__":
+                q['spec._category'] = {"$exists": False}
+            else:
+                q['spec._category'] = self.fworker.get('category')
+        elif category:  # category is list of str
+            q['spec._category'] = {"$in": self.fworker.get('category')}
+
+        return q
 
     def to_dict(self) -> Dict:
         """
@@ -168,9 +195,10 @@ class MongoLaunchPad(LaunchPad):
             'ssl_certfile': self.ssl_certfile,
             'ssl_keyfile': self.ssl_keyfile,
             'ssl_pem_passphrase': self.ssl_pem_passphrase,
-            'authsource': self.authsource}
+            'authsource': self.authsource,
+            'fworker': self.fworker}
 
-    def update_spec(self, fw_ids: List[int], spec_document: Dict, mongo: bool=False):
+    def update_spec(self, fw_ids: List[int], spec_document: Dict):
         """
         Update fireworks with a spec. Sometimes you need to modify a firework in progress.
 
@@ -182,10 +210,7 @@ class MongoLaunchPad(LaunchPad):
                 collection.
             mongo (bool): spec_document uses mongo syntax to directly update the spec
         """
-        if mongo:
-            mod_spec = spec_document
-        else:
-            mod_spec = {"$set": {("spec." + k): v for k, v in spec_document.items()} }
+        mod_spec = {"$set": {("spec." + k): v for k, v in spec_document.items()} }
 
         allowed_states = ["READY", "WAITING", "FIZZLED", "DEFUSED", "PAUSED"]
         self.fireworks.update_many({'fw_id': {"$in": fw_ids},
@@ -577,7 +602,7 @@ class MongoLaunchPad(LaunchPad):
             m_query = {"fw_id": fw_id, "state": {'$in': ['READY', 'RESERVED']}}
 
         while True:
-            # check out the matching firework, depending on the query set by the FWorker
+            # check out the matching firework, depending on the query set by the worker
             if checkout:
                 m_fw = self.fireworks.find_one_and_update(m_query,
                                                           {'$set': {'state': 'RESERVED',
@@ -983,7 +1008,7 @@ class MongoLaunchPad(LaunchPad):
         """
         #fw = self.get_fw_by_id(fw_id, launch_idx)
         # need to change this when fworker gets integrated
-        fw = self.checkout_fw(FWorker(), os.getcwd(), fw_id, state='RESERVED')
+        fw = self.checkout_fw(os.getcwd(), fw_id, state='RESERVED')
         fw.state = "OFFLINE-RESERVED"
         fw.to_file("FW.json")
         with open('FW_offline.json', 'w') as f:
