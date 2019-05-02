@@ -160,7 +160,7 @@ class Rocket:
                     f_out.write(json.dumps(d, ensure_ascii=False))
 
         if not m_fw:
-            print("No FireWorks are ready to run and match query! {}".format(self.launchpad.worker_query))
+            print("No FireWorks are ready to run and match query! {}".format(self.launchpad.get_worker_query()))
             return False
 
         self.fw_id = m_fw.fw_id
@@ -237,7 +237,7 @@ class Rocket:
                 m_fw.to_file('FW.yaml')
 
             my_spec = dict(m_fw.spec)  # make a copy of spec, don't override original
-            my_spec["_fw_env"] = lp.fworker.get('env') if lp else None
+            my_spec["_fw_env"] = lp.get_worker_query().get('env') if lp else None
 
             # set up heartbeat (pinging the server that we're still alive)
             ping_stop = start_ping_firework(lp, fw_id)

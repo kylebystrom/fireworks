@@ -927,9 +927,20 @@ class LaunchPad(FWSerializable, ABC):
     # TODO NOTE: CHANGED THESE FUNCTION SIGNATURES TO TAKE fw_id's
     # INSTEAD OF launch_id's ETC.
 
+    def get_worker_query(self):
+        return self.worker_query
+
     @property
     @abstractmethod
-    def workflow_count(self):
+    def worker_query(self) -> Dict:
+        """
+        Returns updated query dict.
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def workflow_count(self) -> int:
         """
         Number of workflows in the database
         """
@@ -937,7 +948,7 @@ class LaunchPad(FWSerializable, ABC):
 
     @property
     @abstractmethod
-    def firework_count(self):
+    def firework_count(self) -> int:
         """
         Number of fireworks in the database
         """
