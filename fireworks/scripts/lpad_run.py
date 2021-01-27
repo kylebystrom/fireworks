@@ -79,8 +79,7 @@ def parse_helper(lp, args, wf_mode=False, skip_pw=False):
         return pw_check(args.fw_id, args, skip_pw)
     if args.query:
         query = ast.literal_eval(args.query)
-    # remove ref to launches_mode
-    if args.name and 'launches_mode' in args and not args.launches_mode:
+    if args.name:
         query['name'] = args.name
     if args.state:
         query['state'] = args.state
@@ -97,7 +96,7 @@ def parse_helper(lp, args, wf_mode=False, skip_pw=False):
     if wf_mode:
         return pw_check(lp.get_wf_ids(query, sort=sort, limit=max), args, skip_pw)
 
-    return pw_check(lp.get_fw_ids(query, sort=sort, limit=max, launches_mode=args.launches_mode),
+    return pw_check(lp.get_fw_ids(query, sort=sort, limit=max),
                     args, skip_pw)
 
 
@@ -218,7 +217,7 @@ def get_fws(args):
 
     if args.fw_id:
         query = {'fw_id': {"$in": args.fw_id}}
-    elif args.name and not args.launches_mode:
+    elif args.name:
         query = {'name': args.name}
     elif args.state:
         query = {'state': args.state}
@@ -238,11 +237,10 @@ def get_fws(args):
         ids = lp.get_fw_ids_from_reservation_id(args.qid)
         if query:
             query['fw_id'] = {"$in": ids}
-            ids = lp.get_fw_ids(query, sort, args.max, launches_mode=args.launches_mode)
+            ids = lp.get_fw_ids(query, sort, args.max)
 
     else:
-        ids = lp.get_fw_ids(query, sort, args.max, count_only=args.display_format == 'count',
-                            launches_mode=args.launches_mode)
+        ids = lp.get_fw_ids(query, sort, args.max, count_only=args.display_format == 'count')
     fws = []
     if args.display_format == 'ids':
         fws = ids
@@ -564,7 +562,7 @@ def add_scripts(args):
 
 def recover_offline(args):
     lp = get_lp(args)
-    fworker_name = FWorker.from_file(args.fworker_file).name if args.fworker_file else None
+    fworker_name = lp.get_worker_query().get('name') or None
     failed_fws = []
     recovered_fws = []
 
@@ -710,11 +708,6 @@ def lpad():
     query_kwargs = {"help": 'Query (enclose pymongo-style dict in '
                             'single-quotes, e.g. \'{"state":"COMPLETED"}\')'}
 
-    launches_mode_args = ["-lm", "--launches_mode"]
-    launches_mode_kwargs = {"action": "store_true",
-                            "help": 'Query the launches collection (enclose pymongo-style '
-                                    'dict in single-quotes, e.g. \'{"launch_id": 1}\')'}
-
     qid_args = ["--qid"]
     qid_kwargs = {"help": "Query by reservation id of job in queue"}
 
@@ -783,7 +776,6 @@ def lpad():
     get_fw_parser.add_argument('-n', '--name', help='get FWs with this name')
     get_fw_parser.add_argument(*state_args, **state_kwargs)
     get_fw_parser.add_argument(*query_args, **query_kwargs)
-    get_fw_parser.add_argument(*launches_mode_args, **launches_mode_kwargs)
     get_fw_parser.add_argument(*qid_args, **qid_kwargs)
     get_fw_parser.add_argument(*disp_args, **disp_kwargs)
     get_fw_parser.add_argument('-m', '--max', help='limit results', default=0,
@@ -799,7 +791,6 @@ def lpad():
     trackfw_parser.add_argument('-n', '--name', help='name')
     trackfw_parser.add_argument(*state_args, **state_kwargs)
     trackfw_parser.add_argument(*query_args, **query_kwargs)
-    trackfw_parser.add_argument(*launches_mode_args, **launches_mode_kwargs)
     trackfw_parser.add_argument('-c', '--include', nargs="+",
                                 help='only include these files in the report')
     trackfw_parser.add_argument('-x', '--exclude', nargs="+",
@@ -812,7 +803,6 @@ def lpad():
     rerun_fws_parser.add_argument('-n', '--name', help='name')
     rerun_fws_parser.add_argument(*state_args, **state_kwargs)
     rerun_fws_parser.add_argument(*query_args, **query_kwargs)
-    rerun_fws_parser.add_argument(*launches_mode_args, **launches_mode_kwargs)
     rerun_fws_parser.add_argument('--password', help="Today's date, e.g. 2012-02-25. "
                                                      "Password or positive response to input prompt "
                                                      "required when modifying more than {} "
@@ -834,7 +824,6 @@ def lpad():
     defuse_fw_parser.add_argument('-n', '--name', help='name')
     defuse_fw_parser.add_argument(*state_args, **state_kwargs)
     defuse_fw_parser.add_argument(*query_args, **query_kwargs)
-    defuse_fw_parser.add_argument(*launches_mode_args, **launches_mode_kwargs)
     defuse_fw_parser.add_argument('--password', help="Today's date, e.g. 2012-02-25. "
                                                      "Password or positive response to input prompt "
                                                      "required when modifying more than {} "
@@ -846,7 +835,6 @@ def lpad():
     pause_fw_parser.add_argument('-n', '--name', help='name')
     pause_fw_parser.add_argument(*state_args, **state_kwargs)
     pause_fw_parser.add_argument(*query_args, **query_kwargs)
-    pause_fw_parser.add_argument(*launches_mode_args, **launches_mode_kwargs)
     pause_fw_parser.set_defaults(func=pause_fws)
 
 
@@ -855,7 +843,6 @@ def lpad():
     reignite_fw_parser.add_argument('-n', '--name', help='name')
     reignite_fw_parser.add_argument(*state_args, **state_kwargs)
     reignite_fw_parser.add_argument(*query_args, **query_kwargs)
-    reignite_fw_parser.add_argument(*launches_mode_args, **launches_mode_kwargs)
     reignite_fw_parser.add_argument('--password', help="Today's date, e.g. 2012-02-25. "
                                                        "Password or positive response to input "
                                                        "prompt required when modifying more than {} "
@@ -867,7 +854,6 @@ def lpad():
     resume_fw_parser.add_argument('-n', '--name', help='name')
     resume_fw_parser.add_argument(*state_args, **state_kwargs)
     resume_fw_parser.add_argument(*query_args, **query_kwargs)
-    resume_fw_parser.add_argument(*launches_mode_args, **launches_mode_kwargs)
     resume_fw_parser.add_argument('--password', help="Today's date, e.g. 2012-02-25. "
                                                        "Password or positive response to input "
                                                        "prompt required when modifying more than {} "
@@ -880,7 +866,6 @@ def lpad():
     update_fws_parser.add_argument('-n', '--name', help='get FWs with this name')
     update_fws_parser.add_argument(*state_args, **state_kwargs)
     update_fws_parser.add_argument(*query_args, **query_kwargs)
-    update_fws_parser.add_argument(*launches_mode_args, **launches_mode_kwargs)
     update_fws_parser.add_argument("-u", "--update", type=str,
                                    help='Doc update (enclose pymongo-style dict '
                                         'in single-quotes, e.g. \'{'
@@ -1013,7 +998,6 @@ def lpad():
     priority_parser.add_argument('-n', '--name', help='name')
     priority_parser.add_argument(*state_args, **state_kwargs)
     priority_parser.add_argument(*query_args, **query_kwargs)
-    priority_parser.add_argument(*launches_mode_args, **launches_mode_kwargs)
     priority_parser.add_argument('--password', help="Today's date, e.g. 2012-02-25. "
                                                     "Password or positive response to input prompt "
                                                     "required when modifying more than {} "

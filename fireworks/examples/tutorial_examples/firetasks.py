@@ -2,7 +2,7 @@
 This code is described in the Firetasks tutorial, https://materialsproject.github.io/fireworks/firetask_tutorial.html
 """
 
-from fireworks import Firework, FWorker, LaunchPad
+from fireworks import Firework, LaunchPad
 from fireworks.scripts.rocket_launcher import launch_rocket
 from fw_tutorials.firetask.addition_task import AdditionTask
 
@@ -16,4 +16,4 @@ if __name__ == "__main__":
 
     # store workflow and launch it locally
     launchpad.add_wf(firework)
-    launch_rocket(launchpad, FWorker())
+    launch_rocket(launchpad)

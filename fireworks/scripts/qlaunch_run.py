@@ -21,7 +21,6 @@ else:
     HAS_FABRIC = True
 
 from fireworks.fw_config import QUEUEADAPTER_LOC, CONFIG_FILE_DIR, FWORKER_LOC, LAUNCHPAD_LOC
-from fireworks.core.fworker import FWorker
 from fireworks.core.launchpad import LaunchPad
 from fireworks.scripts.queue_launcher import rapidfire, launch_rocket_to_queue
 from fireworks.utilities.fw_serializers import load_object_from_file
@@ -41,12 +40,6 @@ def do_launch(args):
     elif not args.launchpad_file:
         args.launchpad_file = LAUNCHPAD_LOC
 
-    if not args.fworker_file and os.path.exists(
-            os.path.join(args.config_dir, 'my_fworker.yaml')):
-        args.fworker_file = os.path.join(args.config_dir, 'my_fworker.yaml')
-    elif not args.fworker_file:
-        args.fworker_file = FWORKER_LOC
-
     if not args.queueadapter_file and os.path.exists(
             os.path.join(args.config_dir, 'my_qadapter.yaml')):
         args.queueadapter_file = os.path.join(args.config_dir, 'my_qadapter.yaml')
@@ -56,18 +49,16 @@ def do_launch(args):
     launchpad = LaunchPad.from_file(
         args.launchpad_file) if args.launchpad_file else LaunchPad(
         strm_lvl=args.loglvl)
-    fworker = FWorker.from_file(
-        args.fworker_file) if args.fworker_file else FWorker()
     queueadapter = load_object_from_file(args.queueadapter_file)
     args.loglvl = 'CRITICAL' if args.silencer else args.loglvl
 
     if args.command == 'rapidfire':
-        rapidfire(launchpad, fworker=fworker, qadapter=queueadapter, launch_dir=args.launch_dir,
+        rapidfire(launchpad, qadapter=queueadapter, launch_dir=args.launch_dir,
                   nlaunches=args.nlaunches, njobs_queue=args.maxjobs_queue,
                   njobs_block=args.maxjobs_block, sleep_time=args.sleep,
                   reserve=args.reserve, strm_lvl=args.loglvl, timeout=args.timeout, fill_mode=args.fill_mode)
     else:
-        launch_rocket_to_queue(launchpad, fworker, queueadapter,
+        launch_rocket_to_queue(launchpad, queueadapter,
                                args.launch_dir, args.reserve, args.loglvl, False, args.fill_mode, args.fw_id)
 
 def qlaunch():
@@ -129,7 +120,6 @@ def qlaunch():
     parser.add_argument('-s', '--silencer', help='shortcut to mute log messages', action='store_true')
     parser.add_argument('-r', '--reserve', help='reserve a fw', action='store_true')
     parser.add_argument('-l', '--launchpad_file', help='path to launchpad file')
-    parser.add_argument('-w', '--fworker_file', help='path to fworker file')
     parser.add_argument('-q', '--queueadapter_file', help='path to queueadapter file')
     parser.add_argument('-c', '--config_dir',
                         help='path to a directory containing the config file (used if -l, -w, -q unspecified)',

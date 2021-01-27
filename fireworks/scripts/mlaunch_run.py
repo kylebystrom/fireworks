@@ -10,7 +10,6 @@ from argparse import ArgumentParser
 import os
 
 from fireworks.fw_config import CONFIG_FILE_DIR, FWORKER_LOC, LAUNCHPAD_LOC
-from fireworks.core.fworker import FWorker
 from fireworks.core.launchpad import LaunchPad
 from fireworks.features.multi_launcher import launch_multiprocess
 
@@ -38,8 +37,6 @@ def mlaunch():
 
     parser.add_argument('-l', '--launchpad_file', help='path to launchpad file',
                         default=LAUNCHPAD_LOC)
-    parser.add_argument('-w', '--fworker_file', help='path to fworker file',
-                        default=FWORKER_LOC)
     parser.add_argument('-c', '--config_dir', help='path to a directory containing the config file '
                                                    '(used if -l, -w unspecified)',
                         default=CONFIG_FILE_DIR)
@@ -71,18 +68,9 @@ def mlaunch():
                                                                                    'my_launchpad.yaml')):
         args.launchpad_file = os.path.join(args.config_dir, 'my_launchpad.yaml')
 
-    if not args.fworker_file and args.config_dir and os.path.exists(os.path.join(args.config_dir,
-                                                                                 'my_fworker.yaml')):
-        args.fworker_file = os.path.join(args.config_dir, 'my_fworker.yaml')
-
     args.loglvl = 'CRITICAL' if args.silencer else args.loglvl
 
     launchpad = LaunchPad.from_file(args.launchpad_file) if args.launchpad_file else LaunchPad(strm_lvl=args.loglvl)
-
-    if args.fworker_file:
-        fworker = FWorker.from_file(args.fworker_file)
-    else:
-        fworker = FWorker()
 
     total_node_list = None
     if args.nodefile:
@@ -91,7 +79,7 @@ def mlaunch():
         with open(args.nodefile, 'r') as f:
             total_node_list = [line.strip() for line in f.readlines()]
 
-    launch_multiprocess(launchpad, fworker, args.loglvl, args.nlaunches, args.num_jobs,
+    launch_multiprocess(launchpad, args.loglvl, args.nlaunches, args.num_jobs,
                         args.sleep, total_node_list, args.ppn, timeout=args.timeout,
                         exclude_current_node=args.exclude_current_node)
 

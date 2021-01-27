@@ -26,7 +26,6 @@ from monty.io import zopen
 from monty.serialization import loadfn, dumpfn
 
 from fireworks.core.firework import FWAction, Firetask, Firework
-from fireworks.core.fworker import FWorker
 from fireworks.fw_config import FWData, PING_TIME_SECS, REMOVE_USELESS_DIRS, \
     PRINT_FW_JSON, \
     PRINT_FW_YAML, STORE_PACKING_INFO, ROCKET_STREAM_LOGLEVEL
@@ -261,9 +260,6 @@ class Rocket:
                 if lp:
                     l_logger.log(logging.INFO, "Task started: %s." % t.fw_name)
 
-                # TODO
-                # Should remove this functionality
-                # OR serialize LaunchPad and FWorker and add them to spec
                 if my_spec.get("_add_launchpad_and_fw_id"):
                     t.fw_id = m_fw.fw_id
                     if FWData().MULTIPROCESSING:
@@ -274,7 +270,6 @@ class Rocket:
 
                 if my_spec.get("_add_fworker"):
                     t.fworker = self.launchpad.fworker
-                # END TODO
 
                 try:
                     m_action = t.run_task(my_spec)
